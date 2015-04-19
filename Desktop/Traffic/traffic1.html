@@ -1,0 +1,124 @@
+
+<html>
+<body>
+<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
+
+<script>
+var ctx = document.getElementById("ctx").getContext("2d");
+ctx.font = '30px Arial';
+ctx.fillStyle = 'red'
+
+var HEIGHT = 500;
+var WIDTH = 500;
+var vehicleList = {};
+var go = 1;
+var wheelLength = 8
+var wheelWidth = 4
+
+var timeWhenGameStarted = Date.now();
+var frameCount = 0;
+
+Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD){
+	var self = {
+		type:type,
+		id:id,
+		x:x,
+		y:y,
+		theta:theta,
+		angle:angle,
+		spd:spd,
+        length:length,
+        width:width,
+        wheelD:wheelD
+	};
+	self.update = function (){
+		self.updatePosition();
+		self.draw();
+		
+	}
+	self.draw = function () {
+		ctx.save();
+		ctx.translate(self.x,self.y)
+		ctx.rotate(self.theta*Math.PI/180);
+		ctx.fillStyle = 'rgb(255,0,0)'
+		ctx.fillRect(-(1-self.wheelD)/2*self.length,-self.width/2,self.length,self.width)
+
+		ctx.fillStyle = 'black';
+		ctx.beginPath();
+      	ctx.arc(0, 0, 3, 0, 2 * Math.PI, false);
+     	ctx.fill();
+     	
+		ctx.fillRect(-wheelLength/2,-self.width/2+wheelWidth/2,wheelLength,wheelWidth)
+		ctx.fillRect(-wheelLength/2,self.width/2-3*wheelWidth/2,wheelLength,wheelWidth)
+
+		
+		ctx.translate(self.wheelD*self.length,0)
+		ctx.save();
+		ctx.translate(0,-self.width/2+wheelWidth)
+		ctx.rotate(self.angle*Math.PI/180);
+		ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
+		ctx.restore();
+
+		ctx.translate(0,self.width/2-wheelWidth)
+		ctx.rotate(self.angle*Math.PI/180);
+		ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
+
+		ctx.restore();
+
+		//ctx.fillStyle = 'SkyBlue'
+		//ctx.fillRect(self.length/2,-self.width/2,self.length/4,self.width)
+		
+		
+	}
+
+
+
+
+	self.updatePosition = function () {
+		self.x += self.spd * Math.cos(self.theta*Math.PI/180);
+        self.y += self.spd * Math.sin(self.theta*Math.PI/180);
+        self.theta += 180*self.spd/(self.length*self.wheelD)*Math.tan(self.angle*Math.PI/180)/Math.PI
+        self.theta = self.theta % 360
+        console.log(self.theta)
+        console.log(self.angle)
+    }
+
+    return self
+}
+
+
+Car = function(id,x,y,theta,angle,spd){
+	var self = Vehicle('Car',id,x,y,theta,angle,spd,40,20,0.6)
+	vehicleList[id] = self
+
+	return self
+}
+
+update = function(){
+	ctx.clearRect(0,0,WIDTH,HEIGHT);
+	oneCar.update();
+
+}
+
+document.onkeydown = function(event){
+        if(event.keyCode === 83)        //s
+                oneCar.spd--;
+        if(event.keyCode === 87)        //w
+                oneCar.spd++;
+        if(event.keyCode === 68)        //d
+            	oneCar.angle += 5
+    	if(event.keyCode === 65)        //a
+            	oneCar.angle -= 5;
+}
+
+
+var oneCar = Car(1,200,100,0,5,0);
+
+
+	setInterval(update,100);
+
+</script>
+
+
+</body>
+</html>
