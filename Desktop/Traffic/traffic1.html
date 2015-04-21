@@ -15,6 +15,9 @@ var wheelWidth = 4
 var timeWhenGameStarted = Date.now();
 var frameCount = 0;
 var map = [100,225, 100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100]
+
+
+
 Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
 	var self = {
 		type:type,
@@ -105,6 +108,28 @@ update = function(){
 	drawMap();
 
 	oneCar.update();
+	
+
+	if(oneCar.distToLine >50){
+		oneCar.angle = 250-oneCar.theta
+		if(oneCar.theta-250<1 && oneGo == 0) {
+			initDist = initDist -oneCar.distToLine
+			oneGo = 1
+		}
+	}
+console.log('Init', initDist)
+	if (oneCar.distToLine < 50){
+		if(oneCar.distToLine < initDist+30){
+			oneCar.angle = 270-oneCar.theta
+		}
+	}
+
+	
+
+	
+		oneCar.angle = 250-oneCar.theta
+	if(oneCar.distToLine < 50)
+		oneCar.angle = 270-oneCar.theta
 }
 document.onkeydown = function(event){
         if(event.keyCode === 83)        //s
@@ -115,8 +140,16 @@ document.onkeydown = function(event){
             	oneCar.angle += 5
     	if(event.keyCode === 65)        //a
             	oneCar.angle -= 5;
+        if(event.keyCode === 90)
+        		oneCar.angle = 270-oneCar.theta
 }
-var oneCar = Car(1,150,250,270,0,0);
+var oneCar = Car(1,170,350,270,0,0);
+oneCar.update();
+
+var initDist = oneCar.distToLine
+var oneGo = 0
+
+
 	setInterval(update,100);
 </script>
 
