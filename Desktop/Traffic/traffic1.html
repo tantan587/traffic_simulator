@@ -14,14 +14,11 @@ var wheelLength = 8
 var wheelWidth = 4
 var timeWhenGameStarted = Date.now();
 var frameCount = 0;
-var map = [100,225, 100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100]
+var map = [100,225,100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100, 100,225]
 var k1=[]
 var k2=[]
 var k3=[]
 var k4=[]
-
-
-
 Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
 	var self = {
 		type:type,
@@ -35,18 +32,28 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
         width:width,
         wheelD:wheelD,
         currPoint:currPoint,
-        distToLine:0
-        myTrace:[]
-	};
+        distToLine:0,
+        myTrace:[],
+        T2Rad:function(){
+            return self.theta*180/Math.PI
+        },
+        xFront:function(){
+            return Math.cos(self.theta*Math.PI/180)*self.wheelD*self.length+self.x
+        },
+        yFront:function(){
+            return Math.sin(self.theta*Math.PI/180)*self.wheelD*self.length+self.y
+
+	    },
+        
+    }
     self.update = function (){
         self.updatePosition();
         self.populateMyTrace();
+        drawMap(self.myTrace,'red')
         self.draw();
-
-        self.getDistanceToLine();
+        self.getDistanceToLine('front');
                                
     }
-
 	self.draw = function () {
 		ctx.save();
 		ctx.translate(self.x,self.y)
@@ -62,6 +69,9 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
 		ctx.fillRect(-wheelLength/2,self.width/2-3*wheelWidth/2,wheelLength,wheelWidth)
 		
 		ctx.translate(self.wheelD*self.length,0)
+        ctx.beginPath();
+        ctx.arc(0, 0, 1, 0, 2 * Math.PI, false);
+        ctx.fill();
 		ctx.save();
 		ctx.translate(0,-self.width/2+wheelWidth)
 		ctx.rotate(self.angle*Math.PI/180);
@@ -77,19 +87,16 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
 		
 	}
 	self.updatePosition = function () {
-
 		//normal method
 		self.x += self.XDot(self.theta);
         self.y += self.YDot(self.theta);
         self.theta += self.ThetaDot(self.angle)
         self.theta = self.theta % 360
-
-
         //console.log(self.theta)
         //console.log(self.angle)
     }
 
-    self.updatePostionRK = function () {
+    self.updatePositionRK = function () {
     	updateTime = 0.25
     	k1[0] = self.XDot(self.theta)
     	k1[1] = self.YDot(self.theta);
@@ -100,7 +107,6 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
         k3[1] = self.YDot(self.theta+updateTime/2*k1[2])
         k4[0] = self.XDot(self.theta+updateTime*k1[2])
         k4[1] = self.YDot(self.theta+updateTime*k1[2])
-
         self.x += updateTime/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
         self.y += updateTime/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
         self.theta += updateTime*self.ThetaDot(self.angle)
@@ -108,28 +114,42 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
     }
 
     self.XDot = function(myTheta) {
-
     	return self.spd*Math.cos(myTheta*Math.PI/180) 
     }
-
     self.YDot = function(myTheta) {
-
     	return self.spd*Math.sin(myTheta*Math.PI/180) 
     }
-
     self.ThetaDot = function(myTheta) {
-
     	return (180*self.spd/(self.length*self.wheelD)*Math.tan(myTheta*Math.PI/180)/Math.PI)
     }
+    
+    self.getCurrentPoint = function (curr){
+        if (curr == -1){
+        return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
+        }
+        else {
+        return [map[curr*2],map[curr*2+1],map[curr*2+2],map[curr*2+3]]   
+        }
+    }
 
-    self.getDistanceToLine = function(){
-    	var x1 = map[currPoint*2]
-    	var y1 = map[currPoint*2+1]
-    	var x2 = map[currPoint*2+2]
-    	var y2 = map[currPoint*2+3]
-    	self.distToLine = Math.abs((y2-y1)*self.x-(x2-x1)*self.y + x2*y1-y2*x1)/Math.sqrt(Math.pow(y2-y1,2)+Math.pow(x2-x1,2))
+    self.getDistanceToLine = function(whichOne){
+        x = self.x;
+        y = self.y;
+        if (whichOne === "front"){
+            x = self.xFront();
+            y = self.yFront();
+        }
+        c = self.getCurrentPoint(self.currPoint)
+    	self.distToLine = Math.abs((c[3]-c[1])*x-(c[2]-c[0])*y + c[2]*c[1]-c[3]*c[0])/Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
     	//console.log(self.distToLine)
     }
+
+    self.getAngleOfLine = function(){
+
+        c = self.getCurrentPoint(self.currPoint-1)
+        return Math.atan2(c[3]-c[1],c[2]-c[0])
+    }
+
 
     self.populateMyTrace = function(){
         myLength = self.myTrace.length
@@ -143,15 +163,13 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
         }
                
     }
-
     return self
 }
 Car = function(id,x,y,theta,angle,spd){
-	var self = Vehicle('Car',id,x,y,theta,angle,spd,100,20,0.9,0)
+	var self = Vehicle('Car',id,x,y,theta,angle,spd,40,20,0.65,0)
 	vehicleList[id] = self
 	return self
 }
-
 drawMap = function(localMap, color){
     ctx.save();
     ctx.strokeStyle = color
@@ -164,21 +182,32 @@ drawMap = function(localMap, color){
     ctx.stroke();
     ctx.restore();
 }
-
 update = function(){
 	ctx.clearRect(0,0,WIDTH,HEIGHT);
-
 	drawMap(map,'black');
-
 	oneCar.update();
-	oneCar.angle = 270-oneCar.theta
-	if (oneCar.theta > 269 && oneGo ==0){
-		okayNow = oneCar.distToLine
-		console.log('okayNow', okayNow)
-		console.log('starting', Math.sin(30*Math.PI/180)*oneCar.wheelD*oneCar.length)
-		oneGo = 1
-	}
 
+    //console.log(oneCar.getAngleOfLine()*180/Math.PI, oneCar.theta)
+    oneCar.angle = oneCar.getAngleOfLine()*180/Math.PI-oneCar.theta
+    if (Math.abs(oneCar.distToLine) <0.5 && oneGo == 0){
+        //oneGo = 1
+        oneCar.currPoint += 1
+        //oneCar.angle = oneCar.getAngleOfLine()*180/Math.PI-oneCar.theta
+    
+    }
+
+     // console.log(oneCar.getAngleOfLine()*180/Math.PI, oneCar.theta)
+    //if (oneCar.distToLine <0.5 || oneGo == 1){
+     //   //console.log(oneCar.distToLine)
+      //  oneCar.angle = oneCar.theta-oneCar.getAngleOfLine()
+
+	//oneCar.angle = 360-oneCar.theta
+	//if (oneCar.angle < 0.01 && oneGo ==0){
+	//	okayNow = oneCar.distToLine
+	//	console.log('okayNow', okayNow)
+	//	console.log('starting', oneCar)
+	//	oneGo = 1
+	//}
 }
 document.onkeydown = function(event){
         if(event.keyCode === 83)        //s
@@ -192,15 +221,13 @@ document.onkeydown = function(event){
         if(event.keyCode === 90)
         		oneCar.angle = 270-oneCar.theta
 }
-var oneCar = Car(1,100,325,240,0,0);
+var oneCar = Car(1,172.5,162.5,135,0,0);
+//var oneCar = Car(1,100,100,90,0,0);
 oneCar.update();
-
 var initDist = oneCar.distToLine
 var oneGo = 0
 var okayNow = 0
 var updateTime = 0.25
-
-
 setInterval(update,updateTime*40);
 </script>
 
