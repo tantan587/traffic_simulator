@@ -36,14 +36,17 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
         wheelD:wheelD,
         currPoint:currPoint,
         distToLine:0
+        myTrace:[]
 	};
-	self.update = function (){
-		//self.updatePosition();
-		self.updatePostionRK();
-		self.draw();
-		self.getDistanceToLine();
-		
-	}
+    self.update = function (){
+        self.updatePosition();
+        self.populateMyTrace();
+        self.draw();
+
+        self.getDistanceToLine();
+                               
+    }
+
 	self.draw = function () {
 		ctx.save();
 		ctx.translate(self.x,self.y)
@@ -127,6 +130,20 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
     	self.distToLine = Math.abs((y2-y1)*self.x-(x2-x1)*self.y + x2*y1-y2*x1)/Math.sqrt(Math.pow(y2-y1,2)+Math.pow(x2-x1,2))
     	//console.log(self.distToLine)
     }
+
+    self.populateMyTrace = function(){
+        myLength = self.myTrace.length
+        if (myLength ==0) {
+                self.myTrace[0] = self.x;
+                self.myTrace[1] = self.y;
+        }
+        else if(self.myTrace[myLength-2] != self.x || self.myTrace[myLength-1] != self.y ){
+                self.myTrace[myLength] = self.x
+                self.myTrace[myLength+1] = self.y
+        }
+               
+    }
+
     return self
 }
 Car = function(id,x,y,theta,angle,spd){
@@ -135,19 +152,23 @@ Car = function(id,x,y,theta,angle,spd){
 	return self
 }
 
-drawMap = function(){
-		ctx.beginPath();
-	ctx.moveTo(map[0],map[1]);
-for (i=2; i<map.length; i=i+2) {
-	ctx.lineTo(map[i],map[i+1]);
-	}
-	ctx.lineTo(map[0],map[1]);
-	ctx.stroke();
+drawMap = function(localMap, color){
+    ctx.save();
+    ctx.strokeStyle = color
+    ctx.beginPath();
+    ctx.moveTo(localMap[0],localMap[1]);
+	for (i=2; i<localMap.length; i=i+2) {
+    	ctx.lineTo(localMap[i],localMap[i+1]);
+    }
+    //ctx.lineTo(localMap[0],localMap[1]);
+    ctx.stroke();
+    ctx.restore();
 }
+
 update = function(){
 	ctx.clearRect(0,0,WIDTH,HEIGHT);
 
-	drawMap();
+	drawMap(map,'black');
 
 	oneCar.update();
 	oneCar.angle = 270-oneCar.theta
