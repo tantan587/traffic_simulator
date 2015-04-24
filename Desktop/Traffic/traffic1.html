@@ -5,7 +5,6 @@ https://github.com/tantan587/traffic_simulator.git         <html>
 <script>
 var ctx = document.getElementById("ctx").getContext("2d");
 ctx.font = '30px Arial';
-ctx.fillStyle = 'red'
 var HEIGHT = 500;
 var WIDTH = 500;
 var vehicleList = {};
@@ -14,12 +13,12 @@ var wheelLength = 8
 var wheelWidth = 4
 var timeWhenGameStarted = Date.now();
 var frameCount = 0;
-var map = [100,225,100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100, 100,225]
+var map = [100,225,100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100]
 var k1=[]
 var k2=[]
 var k3=[]
 var k4=[]
-Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
+Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,color){
 	var self = {
 		type:type,
 		id:id,
@@ -34,6 +33,7 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
         currPoint:currPoint,
         distToLine:0,
         myTrace:[],
+        color:color,
         T2Rad:function(){
             return self.theta*180/Math.PI
         },
@@ -49,7 +49,7 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
     self.update = function (){
         self.updatePosition();
         self.populateMyTrace();
-        drawMap(self.myTrace,'red')
+        drawMap(self.myTrace,self.color)
         self.draw();
         self.getDistanceToLine('front');
                                
@@ -58,7 +58,7 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
 		ctx.save();
 		ctx.translate(self.x,self.y)
 		ctx.rotate(self.theta*Math.PI/180);
-		ctx.fillStyle = 'rgb(255,0,0)'
+		ctx.fillStyle = self.color
 		ctx.fillRect(-(1-self.wheelD)/2*self.length,-self.width/2,self.length,self.width)
 		ctx.fillStyle = 'black';
 		ctx.beginPath();
@@ -127,6 +127,11 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
         if (curr == -1){
         return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
         }
+
+        else if (curr == map.length/2-1){
+        return [map[curr*2],map[curr*2+1],map[0],map[1]]   
+        }
+
         else {
         return [map[curr*2],map[curr*2+1],map[curr*2+2],map[curr*2+3]]   
         }
@@ -165,12 +170,12 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint){
     }
     return self
 }
-Car = function(id,x,y,theta,angle,spd){
-	var self = Vehicle('Car',id,x,y,theta,angle,spd,40,20,0.65,0)
+Car = function(id,x,y,theta,angle,spd,curr,color){
+	var self = Vehicle('Car',id,x,y,theta,angle,spd,40,20,0.65,curr,color)
 	vehicleList[id] = self
 	return self
 }
-drawMap = function(localMap, color){
+drawMap = function(localMap, color,finish){
     ctx.save();
     ctx.strokeStyle = color
     ctx.beginPath();
@@ -178,55 +183,48 @@ drawMap = function(localMap, color){
 	for (i=2; i<localMap.length; i=i+2) {
     	ctx.lineTo(localMap[i],localMap[i+1]);
     }
-    //ctx.lineTo(localMap[0],localMap[1]);
+    if(finish == true){
+    	ctx.lineTo(localMap[0],localMap[1]);
+    }
     ctx.stroke();
     ctx.restore();
 }
 update = function(){
 	ctx.clearRect(0,0,WIDTH,HEIGHT);
-	drawMap(map,'black');
-	oneCar.update();
+	drawMap(map,'black',true);
 
-    //console.log(oneCar.getAngleOfLine()*180/Math.PI, oneCar.theta)
-    oneCar.angle = oneCar.getAngleOfLine()*180/Math.PI-oneCar.theta
-    if (Math.abs(oneCar.distToLine) <0.5 && oneGo == 0){
-        //oneGo = 1
-        oneCar.currPoint += 1
-        //oneCar.angle = oneCar.getAngleOfLine()*180/Math.PI-oneCar.theta
-    
-    }
+//console.log(vehicleList[1].getCurrentPoint(oneCur))
 
-     // console.log(oneCar.getAngleOfLine()*180/Math.PI, oneCar.theta)
-    //if (oneCar.distToLine <0.5 || oneGo == 1){
-     //   //console.log(oneCar.distToLine)
-      //  oneCar.angle = oneCar.theta-oneCar.getAngleOfLine()
-
-	//oneCar.angle = 360-oneCar.theta
-	//if (oneCar.angle < 0.01 && oneGo ==0){
-	//	okayNow = oneCar.distToLine
-	//	console.log('okayNow', okayNow)
-	//	console.log('starting', oneCar)
-	//	oneGo = 1
-	//}
+	for (id in vehicleList) {
+		vehicleList[id].update();
+	//console.log(vehicleList[id].currPoint)
+    	vehicleList[id].angle = vehicleList[id].getAngleOfLine()*180/Math.PI-vehicleList[id].theta
+    	if (Math.abs(vehicleList[id].distToLine) <0.5){
+        vehicleList[id].currPoint += 1
+        vehicleList[id].currPoint = vehicleList[id].currPoint % (map.length/2)
+    	}
+	}
 }
 document.onkeydown = function(event){
-        if(event.keyCode === 83)        //s
-                oneCar.spd -= updateTime;
+        if(event.keyCode === 83)
+        	for (id in vehicleList) {        //s
+                vehicleList[id].spd -= updateTime;
+            }
         if(event.keyCode === 87)        //w
-                oneCar.spd += updateTime;
-        if(event.keyCode === 68)        //d
-            	oneCar.angle += 5
-    	if(event.keyCode === 65)        //a
-            	oneCar.angle -= 5;
-        if(event.keyCode === 90)
-        		oneCar.angle = 270-oneCar.theta
+                for (id in vehicleList) {        //s
+                vehicleList[id].spd += updateTime;
+            }
+        if(event.keyCode === 68)  {oneCur += 1}     //d
+         
+    	if(event.keyCode === 65)  {}      //a
+            	
+        if(event.keyCode === 90) {} //z
+        		
 }
-var oneCar = Car(1,172.5,162.5,135,0,0);
-//var oneCar = Car(1,100,100,90,0,0);
-oneCar.update();
-var initDist = oneCar.distToLine
-var oneGo = 0
-var okayNow = 0
+
+Car(1,172.5,162.5,135,0,0,0,'red');
+Car(2,350,350,325,0,0,4,'blue');
+oneCur = 0
 var updateTime = 0.25
 setInterval(update,updateTime*40);
 </script>
