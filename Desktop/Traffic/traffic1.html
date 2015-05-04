@@ -1,21 +1,22 @@
 <html>
 <body>
-<canvas id="ctx" width="500" height="500" style="border:1px solid #000000;"></canvas>
+<canvas id="ctx" width="750" height="750" style="border:1px solid #000000;"></canvas>
  
 <script>
 var ctx = document.getElementById("ctx").getContext("2d");
 ctx.font = '30px Arial';
-var HEIGHT = 500;
-var WIDTH = 500;
+var HEIGHT = 750;
+var WIDTH = 750;
 var vehicleList = {};
 var go = 1;
 var wheelLength = 8
 var wheelWidth = 4
 var timeWhenGameStarted = Date.now();
 var frameCount = 0;
-var maxTurning = 40;
+var maxTurning = 30;
 //var map = [100,225,100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100]
-var map = [100,225,100,475, 350,475, 475,350, 475,225, 350,100, 225,100]
+//var map = [5,500,100,475, 350,475, 475,350, 475,225, 350,100, 225,100]
+var map =  [ 000,040, 120,60 , 145,080, 150,100, 115,195, 087,240, 070,280,  60 ,380, 60 ,390, 110,480, 100,610, 81 ,642, 80 ,670, 160,720, 265,700, 286,675, 280,635, 270,617, 204,578, 190,550, 200,400, 195,290, 245,235, 330,275, 340,370, 311,443, 300,520, 405,690, 462,690, 500,650, 530,535, 500,475, 475,400, 475,280, 500,225, 575,190, 660,200, 720,310, 720,415, 715,570, 690,595, 671,590, 614,547, 595,425, 590,320, 565,120, 560,111, 548,105, 520,115, 390,120, 342,109, 310,80 , 313,58 , 331,41 , 360,25 , 470,30 , 750,40 ]
 
 Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,color){
     var self = {
@@ -30,7 +31,7 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         width:width,
         wheelD:wheelD,
         currPoint:currPoint,
-        distToLine:0,
+        prevDistToLine:0,
         myTrace:[],
         color:color,
         T2Rad:function(){
@@ -120,7 +121,8 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
    
     self.getCurrentPoint = function (curr){
         if (curr == -1){
-        return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
+        //return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
+        return [map[0],map[1],map[2],map[3]]
        }
         else if (curr == map.length/2-1){
         return [map[curr*2],map[curr*2+1],map[0],map[1]]  
@@ -199,53 +201,53 @@ angleNormalization = function(myAngle) {
 
 update = function(){
     ctx.clearRect(0,0,WIDTH,HEIGHT);
-    drawMap(map,'black',true);
+    drawMap(map,'black');
+    frameCount += 1
+
+    if (frameCount == 100)
+        {//Car(2,5,45,0,0,0,0,'green');
+}
+
  
 //console.log(vehicleList[2].angle)
  
     for (id in vehicleList) {
         
-
-        if (Math.abs(vehicleList[id].getDistanceToLine('prev')) >0.5) {
+        vehicleList[id].update();
+        if (Math.abs(vehicleList[id].getDistanceToLine('prev')) >1) {
         	
-        	d = vehicleList[id].getAngleOfLine()
+        	angleOfLine = vehicleList[id].getAngleOfLine()
         	c = vehicleList[id].getCurrentPoint(vehicleList[id].currPoint-1)
-        	b = angleNormalization(vehicleList[id].theta - d)
-        	a = Math.atan2(c[3]-vehicleList[id].yFront(),c[2]-vehicleList[id].xFront())*180/Math.PI
+        	myDiff = angleNormalization(vehicleList[id].theta - angleOfLine)
+        	myDiffAngle = Math.atan2(c[3]-vehicleList[id].yFront(),c[2]-vehicleList[id].xFront())*180/Math.PI
+            whichWay = Math.sign(angleNormalization(myDiffAngle-angleOfLine))
 
-        	if (Math.sign(a-d) === 1 && Math.abs(b-90) <= 1 || Math.sign(a-d) === -1 && Math.abs(b+90) <= 1 ){
+        	if (whichWay === 1 && Math.abs(myDiff-90) <= 1 || whichWay === -1 && Math.abs(myDiff+90) <= 1)
         		vehicleList[id].angle = 0
-        		console.log(1)
-			}	
-        	else if ((Math.sign(a-d) === 1 && Math.abs(b) <= 90) || (Math.sign(a-d) === -1 && Math.abs(b) > 90)) {
-        		vehicleList[id].angle = maxTurning
-        		console.log(2)
-        	}
-        	else {
-        		vehicleList[id].angle = -maxTurning
-        		console.log(3)
-        	}
-        	
-        	
-        }	
 
+        	else if ((whichWay === 1 && Math.abs(myDiff) <= 90) || (whichWay === -1 && Math.abs(myDiff) > 90)) 
+        		vehicleList[id].angle = maxTurning
+
+        	else 
+        		vehicleList[id].angle = -maxTurning		
+        }	
         else 
         {
         vehicleList[id].angle = angleNormalization(vehicleList[id].getAngleOfLine()-vehicleList[id].theta);
     	}
- 
-        //console.log(vehicleList[id].angle)
         if (Math.abs(vehicleList[id].angle) > maxTurning)
            vehicleList[id].angle = Math.sign(vehicleList[id].angle)*maxTurning
  
-        //console.log(vehicleList[id].angle)
+        if ((vehicleList[id].getDistanceToLine() <0.5) || ((vehicleList[id].getDistanceToLine() <5) && (vehicleList[id].getDistanceToLine()- vehicleList[id].prevDistToLine) >0) ) {
 
-
-        if (Math.abs(vehicleList[id].getDistanceToLine()) <0.5){
-        vehicleList[id].currPoint += 1
-        vehicleList[id].currPoint = vehicleList[id].currPoint % (map.length/2)
+            vehicleList[id].currPoint += 1
+            console.log('curr:', vehicleList[id].currPoint)
+            vehicleList[id].currPoint = vehicleList[id].currPoint % (map.length/2)
+            vehicleList[id].prevDistToLine=0
         }
-        vehicleList[id].update();
+        else {vehicleList[id].prevDistToLine=vehicleList[id].getDistanceToLine()
+        }
+        
     }
 }
 
@@ -253,8 +255,9 @@ document.onclick = function(mouse) {
         var mouseX = mouse.clientX - document.getElementById('ctx').getBoundingClientRect().left;
         var mouseY = mouse.clientY - document.getElementById('ctx').getBoundingClientRect().top;
        
-        vehicleList[2].x = mouseX;
-        vehicleList[2].y = mouseY;
+       console.log(mouseX,mouseY)
+        //vehicleList[1].x = mouseX;
+        //vehicleList[1].y = mouseY;
 
 }
  
@@ -282,8 +285,15 @@ document.onkeydown = function(event){
         if(event.keyCode === 90) {} //z
                
 }
-Car(1,172.5,162.5,135,0,0,0,'red');
-Car(2,300,420,325,0,0,3,'green')
+
+Car = function(id,x,y,theta,angle,spd,curr,color){
+    var self = Vehicle('Car',id,x,y,theta,angle,spd,40,20,0.65,curr,color)
+    vehicleList[id] = self
+    return self
+}
+
+Car(1,5,45,0,0,3,0,'red');
+//Car(2,300,420,325,0,0,3,'green')
 var updateTime = 0.25
 setInterval(update,updateTime*40);
 </script>
