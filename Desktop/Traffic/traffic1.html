@@ -51,11 +51,12 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
     }
  
     self.update = function (){
+        self.draw(); 
         self.driveOnLine();
         self.updatePosition();
         //self.populateMyTrace();
         //drawMap(self.myTrace,self.color)
-        self.draw();                       
+        //self.draw();                       
     }
  
     self.draw = function () {
@@ -96,14 +97,22 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
             myDiffAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
             whichWay = Math.sign(angleNormalization(myDiffAngle-angleOfLine))
 
-            if (whichWay === 1 && Math.abs(myDiff-90) <= 1 || whichWay === -1 && Math.abs(myDiff+90) <= 1)
-                self.angle = 0
+            if  (self.getDistanceToLine('prev') > 2*self.length){
+                if (whichWay === 1 && Math.abs(myDiff-90) <= 1 || whichWay === -1 && Math.abs(myDiff+90) <= 1)
+                    self.angle = 0
 
-            else if ((whichWay === 1 && Math.abs(myDiff) <= 130) || (whichWay === -1 && Math.abs(myDiff) > 130)) 
-                self.angle = maxTurning
+                else if ((whichWay === 1 && Math.abs(myDiff) <= 90) || (whichWay === -1 && Math.abs(myDiff) > 90)) 
+                    self.angle = maxTurning
 
-            else 
-                self.angle = -maxTurning     
+                else 
+                    self.angle = -maxTurning     
+            }
+            else if (whichWay == 1){
+                self.angle = maxTurning;
+            }
+            else{
+                self.angle = -maxTurning;
+            }
         }   
         else {
         self.angle = angleNormalization(self.getAngleOfLine()-self.theta);
@@ -250,10 +259,10 @@ update = function(){
         b = Math.round(Math.random()*230+25)
         myColor = "#"+(r).toString(16)+(g).toString(16)+(b).toString(16);
         if (Math.random() > .3) {
-        Car(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
+        //Car(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
     }
     else { 
-        Pickup(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
+        //Pickup(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
     }
 }
  
@@ -298,8 +307,8 @@ document.onkeydown = function(event){
                
 }
 
-Car(1,5,45,0,0,1,0,'red');
-//Car(2,300,420,325,0,0,3,'green')
+//Car(1,5,45,0,0,1,0,'red');
+Pickup(frameCount/300+1,5,45,0,0,.5,0,'red');
 var updateTime = 0.2
 setInterval(update,updateTime*40);
 </script>
