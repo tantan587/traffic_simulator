@@ -4,22 +4,19 @@
  
 <script>
 var ctx = document.getElementById("ctx").getContext("2d");
-ctx.font = '30px Arial';
+ctx.font = '15px Arial';
 var HEIGHT = 750;
 var WIDTH = 750;
 var vehicleList = {};
 var go = 1;
-var wheelLength = 8
-var wheelWidth = 4
+var wheelLength = 6
+var wheelWidth = 3
 var timeWhenGameStarted = Date.now();
 var frameCount = 1;
 var maxTurning = 30;
 //var map = [100,225,100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100]
 //var map = [5,500,100,475, 350,475, 475,350, 475,225, 350,100, 225,100]
-var map =  [ 000,040, 120,60 , 145,080, 150,100, 115,195, 087,240, 070,280,  60 ,380, 60 ,390, 110,480, 100,610, 81 ,642, 80 ,670, 160,720, 265,700, 286,675, 280,635, 270,617, 204,578, 190,550, 200,400, 195,290, 245,235, 330,275, 340,370, 311,443, 300,520, 405,690, 462,690, 500,650, 530,535, 500,475, 475,400, 475,280, 500,225, 575,190, 660,200, 720,310, 720,415, 715,570, 690,595, 650,605, 593,585, 585,547, 595,425, 590,320, 565,120, 560,111, 548,105, 520,115, 390,120, 342,109, 310,80 , 313,58 , 331,41 , 360,25 , 470,30 , 750,40 ]
-
-
-558,529, 564,509, 570,483, 592,579, 586,577, 573,567, 563,549, 561,528, 571,489, 586,453, 593,418,
+var map =  [ 000,040, 120,60 , 145,080, 150,100, 115,195, 087,240, 070,280, 60 ,380, 60 ,390, 110,480, 100,610, 81 ,642, 80 ,670, 160,720, 265,700, 286,675, 280,635, 270,617, 204,578, 190,550, 200,400, 195,290, 245,235, 330,275, 340,370, 311,443, 300,520, 405,690, 462,690, 500,650, 530,535, 500,475, 475,400, 475,280, 500,225, 575,190, 660,200, 720,310, 720,415, 715,570, 690,595, 650,605, 593,585, 585,547, 595,425, 590,320, 565,120, 560,111, 548,105, 520,115, 390,120, 342,109, 310,80 , 313,58 , 331,41 , 360,25 , 390,40 , 999,40 ]
 
 Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,color,leader){
     var self = {
@@ -47,72 +44,41 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         yFront:function(){
             return Math.sin(self.theta*Math.PI/180)*self.wheelD*self.length+self.y
         },
-       
     }
  
     self.update = function (){
-        self.draw(); 
         self.driveOnLine();
+        self.chooseMySpeed();
         self.updatePosition();
+        var trial = self.howFarInFront();
         //self.populateMyTrace();
         //drawMap(self.myTrace,self.color)
-        //self.draw();                       
+        self.draw();                       
     }
  
-    self.draw = function () {
-        ctx.save();
-        ctx.translate(self.x,self.y)
-        ctx.rotate(self.theta*Math.PI/180);
-        ctx.fillStyle = self.color
-        ctx.fillRect(-(1-self.wheelD)/2*self.length,-self.width/2,self.length,self.width)
-        ctx.fillStyle = 'black';
-        ctx.beginPath();
-        ctx.arc(0, 0, 3, 0, 2 * Math.PI, false);
-        ctx.fill();
-       
-        ctx.fillRect(-wheelLength/2,-self.width/2+wheelWidth/2,wheelLength,wheelWidth)
-        ctx.fillRect(-wheelLength/2,self.width/2-3*wheelWidth/2,wheelLength,wheelWidth)
-       
-        ctx.translate(self.wheelD*self.length,0)
-        ctx.beginPath();
-        ctx.arc(0, 0, 1, 0, 2 * Math.PI, false);
-        ctx.fill();
-        ctx.save();
-        ctx.translate(0,-self.width/2+wheelWidth)
-        ctx.rotate(self.angle*Math.PI/180);
-        ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
-        ctx.restore();
-        ctx.translate(0,self.width/2-wheelWidth)
-        ctx.rotate(self.angle*Math.PI/180);
-        ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
-        ctx.restore();      
-    }
     self.driveOnLine = function () {
-
         if (Math.abs(self.getDistanceToLine('prev')) >1) {
             
-            angleOfLine = self.getAngleOfLine()
             c = self.getCurrentPoint(self.currPoint-1)
-            myDiff = angleNormalization(self.theta - angleOfLine)
+            myDiff = angleNormalization(self.theta - self.getAngleOfLine())
             myDiffAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
-            whichWay = Math.sign(angleNormalization(myDiffAngle-angleOfLine))
+            whichWay = Math.sign(angleNormalization(myDiffAngle-self.getAngleOfLine()))
 
-            if  (self.getDistanceToLine('prev') > 2*self.length){
-                if (whichWay === 1 && Math.abs(myDiff-90) <= 1 || whichWay === -1 && Math.abs(myDiff+90) <= 1)
-                    self.angle = 0
-
-                else if ((whichWay === 1 && Math.abs(myDiff) <= 90) || (whichWay === -1 && Math.abs(myDiff) > 90)) 
+            if (whichWay === 1 && Math.abs(myDiff-90) <= 1 || whichWay === -1 && Math.abs(myDiff+90) <= 1){
+                self.angle = 0
+            }
+            else if (self.getDistanceToLine('prev') >50){
+                if ((whichWay === 1 && Math.abs(myDiff) <= 90) || (whichWay === -1 && Math.abs(myDiff) > 90)) 
                     self.angle = maxTurning
-
                 else 
-                    self.angle = -maxTurning     
+                    self.angle = -maxTurning
             }
-            else if (whichWay == 1){
-                self.angle = maxTurning;
-            }
-            else{
-                self.angle = -maxTurning;
-            }
+            else {
+                if (whichWay===1)
+                    self.angle = maxTurning
+                else
+                    self.angle = -maxTurning
+            }     
         }   
         else {
         self.angle = angleNormalization(self.getAngleOfLine()-self.theta);
@@ -122,15 +88,60 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
            self.angle = Math.sign(self.angle)*maxTurning
  
         if ((self.getDistanceToLine() <0.5) || ((self.getDistanceToLine() <5) && (self.getDistanceToLine()- self.prevDistToLine) >0) ) {
-
             self.currPoint += 1
-            //console.log('curr:', vehicleList[id].currPoint)
             //vehicleList[id].currPoint = vehicleList[id].currPoint % (map.length/2)
             self.prevDistToLine=0
         }
         else {self.prevDistToLine=self.getDistanceToLine()
         }
     }
+    self.chooseMySpeed = function () {
+        if (self.currPoint == 10){
+            self.spd += 0.01
+        }
+            
+        if (self.currPoint == 19) {
+            self.spd -= 0.01
+            //self.color = 'blue'
+        }
+    }
+    self.howFarInFront = function(object) {
+        if (typeof leader === 'undefined'){
+            return 10000
+        }
+        else {
+            var try1 = self.leader.distToCurr()
+            var try2 = self.distToCurr()
+            var try3 = self.DistanceBetweenTwoCurrPoints(self.currPoint,self.leader.currPoint)
+
+        return try1 -try2+try3
+        }
+    }
+
+    self.distToCurr = function() {
+
+        c = self.getCurrentPoint(self.currPoint-1)
+        myAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
+        myDiffAngle = Math.abs(angleNormalization(myAngle-self.getAngleOfLine()))
+        thirdAngle = 90-myDiffAngle
+        distOnLineToCurr = Math.sin(thirdAngle/180*Math.PI)*self.getDistanceToLine('prev')/Math.sin(myDiffAngle/180*Math.PI)
+
+        return distOnLineToCurr
+    }
+
+    //smaller one should be first
+    self.DistanceBetweenTwoCurrPoints = function(one,two) {
+        if (two < one) {
+            return -1*self.DistanceBetweenTwoCurrPoints(two,one)
+        }
+        var dist = 0
+        for (i=one;i<two;i++){
+            c = self.getCurrentPoint(one)
+            dist += Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
+        }
+        return dist
+    }
+
 
     self.updatePosition = function () {
         //normal method
@@ -158,7 +169,7 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         self.theta = self.theta % 360
     }
  
-   self.XDot = function(myTheta) {
+    self.XDot = function(myTheta) {
         return self.spd*Math.cos(myTheta*Math.PI/180)
     }
     self.YDot = function(myTheta) {
@@ -167,6 +178,43 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
     self.ThetaDot = function(myTheta) {
         return (180*self.spd/(self.length*self.wheelD)*Math.tan(myTheta*Math.PI/180)/Math.PI)
     }
+
+    self.draw = function () {
+        ctx.save();
+        ctx.translate(self.x,self.y)
+        ctx.rotate(self.theta*Math.PI/180);
+        ctx.fillStyle = self.color
+        ctx.fillRect(-(1-self.wheelD)/2*self.length,-self.width/2,self.length,self.width)
+        ctx.fillStyle = 'black';
+        ctx.beginPath();
+        ctx.arc(0, 0, 2, 0, 2 * Math.PI, false);
+        ctx.fill();
+       
+        ctx.fillRect(-wheelLength/2,-self.width/2+wheelWidth/2,wheelLength,wheelWidth)
+        ctx.fillRect(-wheelLength/2,self.width/2-3*wheelWidth/2,wheelLength,wheelWidth)
+       
+        ctx.translate(self.wheelD*self.length,0)
+        ctx.beginPath();
+        ctx.arc(0, 0, 1, 0, 2 * Math.PI, false);
+        ctx.fill();
+        ctx.save();
+        if (self.theta > 90 && self.theta < 270)
+            {ctx.rotate(Math.PI)
+            ctx.fillText(self.howFarInFront(),-7,-12)}
+         else   {ctx.fillText(self.howFarInFront(),-22,-12)}
+            //else   {ctx.fillText(Math.round(self.spd*100)/100,-22,-12)}
+        ctx.restore();
+        ctx.save();
+        ctx.translate(0,-self.width/2+wheelWidth)
+        ctx.rotate(self.angle*Math.PI/180);
+        ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
+        ctx.restore();
+        ctx.translate(0,self.width/2-wheelWidth)
+        ctx.rotate(self.angle*Math.PI/180);
+        ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
+        ctx.restore();      
+    }
+
    
     self.getCurrentPoint = function (curr){
         if (curr == -1){
@@ -181,24 +229,21 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         }
     }
     self.getDistanceToLine = function(whichOne){
-        //x = self.x;
-        //y = self.y;
-        //if (whichOne === "front"){
          x = self.xFront();
          y = self.yFront();
-        //}
         if (whichOne === "prev") {
         c = self.getCurrentPoint(self.currPoint-1)}
         else {
-        c = self.getCurrentPoint(self.currPoint)	
+        c = self.getCurrentPoint(self.currPoint)    
         }
         return Math.abs((c[3]-c[1])*x-(c[2]-c[0])*y + c[2]*c[1]-c[3]*c[0])/Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
-        //console.log(self.distToLine)
     }
     self.getAngleOfLine = function(){
         c = self.getCurrentPoint(self.currPoint-1)
         return Math.atan2(c[3]-c[1],c[2]-c[0])*180/Math.PI
     }
+
+    
     self.populateMyTrace = function(){
         myLength = self.myTrace.length
         if (myLength ==0) {
@@ -208,23 +253,23 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         else if(self.myTrace[myLength-2] != self.x || self.myTrace[myLength-1] != self.y ){
                 self.myTrace[myLength] = self.x
                 self.myTrace[myLength+1] = self.y
-        }
-              
+        }        
     }
     return self
 }
+
 Car = function(id,x,y,theta,angle,spd,curr,color,leader){
-    var self = Vehicle('Car',id,x,y,theta,angle,spd,40,20,0.65,curr,color,leader)
+    var self = Vehicle('Car',id,x,y,theta,angle,spd,30,15,0.65,curr,color,leader)
+    self.topSpd = 2.3
     vehicleList[id] = self
     return self
 }
  
 Pickup = function(id,x,y,theta,angle,spd,curr,color,leader){
-    var self = Vehicle('Pickup',id,x,y,theta,angle,spd,60,20,0.7,curr,color,leader)
+    var self = Vehicle('Pickup',id,x,y,theta,angle,spd,40,15,0.7,curr,color,leader)
     vehicleList[id] = self
     return self
 }
- 
 drawMap = function(localMap, color,finish){
     ctx.save();
     ctx.strokeStyle = color
@@ -247,25 +292,26 @@ angleNormalization = function(myAngle) {
         myAngle += 360;       
     return myAngle
 }
-
 update = function(){
     ctx.clearRect(0,0,WIDTH,HEIGHT);
     drawMap(map,'black');
     frameCount += 1
-    //console.log(frameCount)
-    if (frameCount % 300 == 0){
+
+    //if (frameCount % 300 == 0){
+    if (frameCount === 1000){
         r = Math.round(Math.random()*230+25)
         g = Math.round(Math.random()*230+25) 
         b = Math.round(Math.random()*230+25)
         myColor = "#"+(r).toString(16)+(g).toString(16)+(b).toString(16);
-        if (Math.random() > .3) {
+        //if (Math.random() > .3) {
+        if (Math.random() > 0) {
         //Car(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
+        Car(frameCount/300+1,5,45,0,0,.5,0,myColor,1);
     }
     else { 
         //Pickup(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
     }
 }
- 
     for (id in vehicleList) {
         
         vehicleList[id].update();
@@ -274,7 +320,6 @@ update = function(){
         delete vehicleList[id]
     }
 }
-
 document.onclick = function(mouse) {
         var mouseX = mouse.clientX - document.getElementById('ctx').getBoundingClientRect().left;
         var mouseY = mouse.clientY - document.getElementById('ctx').getBoundingClientRect().top;
@@ -292,13 +337,13 @@ document.onkeydown = function(event){
                 vehicleList[id].spd += updateTime;
             }
         if(event.keyCode === 68)  {
-        	for (id in vehicleList) {        //d
+            for (id in vehicleList) {        //d
                 vehicleList[id].theta += 5;
             } 
         }    
         
         if(event.keyCode === 65)  {
-        	for (id in vehicleList) {        //a
+            for (id in vehicleList) {        //a
                 vehicleList[id].theta -= 5;
             }     
         }      
@@ -306,13 +351,10 @@ document.onkeydown = function(event){
         if(event.keyCode === 90) {} //z
                
 }
-
 //Car(1,5,45,0,0,1,0,'red');
-Pickup(frameCount/300+1,5,45,0,0,.5,0,'red');
-var updateTime = 0.2
+Pickup(1,5,45,0,0,1,0,'red');
+var updateTime = 0.25
 setInterval(update,updateTime*40);
 </script>
- 
- 
 </body>
 </html>
