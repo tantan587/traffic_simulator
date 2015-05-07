@@ -97,51 +97,14 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
     }
     self.chooseMySpeed = function () {
         if (self.currPoint == 10){
-            self.spd += 0.01
+            self.spd += 0.00
         }
             
         if (self.currPoint == 19) {
-            self.spd -= 0.01
+            self.spd -= 0.00
             //self.color = 'blue'
         }
     }
-    self.howFarInFront = function(object) {
-        if (typeof leader === 'undefined'){
-            return 10000
-        }
-        else {
-            var try1 = self.leader.distToCurr()
-            var try2 = self.distToCurr()
-            var try3 = self.DistanceBetweenTwoCurrPoints(self.currPoint,self.leader.currPoint)
-
-        return try1 -try2+try3
-        }
-    }
-
-    self.distToCurr = function() {
-
-        c = self.getCurrentPoint(self.currPoint-1)
-        myAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
-        myDiffAngle = Math.abs(angleNormalization(myAngle-self.getAngleOfLine()))
-        thirdAngle = 90-myDiffAngle
-        distOnLineToCurr = Math.sin(thirdAngle/180*Math.PI)*self.getDistanceToLine('prev')/Math.sin(myDiffAngle/180*Math.PI)
-
-        return distOnLineToCurr
-    }
-
-    //smaller one should be first
-    self.DistanceBetweenTwoCurrPoints = function(one,two) {
-        if (two < one) {
-            return -1*self.DistanceBetweenTwoCurrPoints(two,one)
-        }
-        var dist = 0
-        for (i=one;i<two;i++){
-            c = self.getCurrentPoint(one)
-            dist += Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
-        }
-        return dist
-    }
-
 
     self.updatePosition = function () {
         //normal method
@@ -215,6 +178,39 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         ctx.restore();      
     }
 
+        self.howFarInFront = function(object) {
+        if (typeof leader === 'undefined'){
+            return 10000
+        }
+        else {
+            return = -Math.round((self.leader.distToCurr() + self.distToCurr() + self.DistanceBetweenTwoCurrPoints(self.currPoint,self.leader.currPoint))*100)/100
+        }
+    }
+
+    self.distToCurr = function() {
+
+        c = self.getCurrentPoint(self.currPoint-1)
+        myAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
+        myDiffAngle = Math.abs(angleNormalization(myAngle-self.getAngleOfLine()))
+        thirdAngle = 90-myDiffAngle
+        distOnLineToCurr = Math.sin(thirdAngle/180*Math.PI)*self.getDistanceToLine('prev')/Math.sin(myDiffAngle/180*Math.PI)
+
+        return distOnLineToCurr
+    }
+
+    //smaller one should be first
+    self.DistanceBetweenTwoCurrPoints = function(one,two) {
+        if (two < one) {
+            return -1*self.DistanceBetweenTwoCurrPoints(two,one)
+        }
+        var dist = 0
+        for (i=one;i<two;i++){
+            c = self.getCurrentPoint(i)
+            dist += Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
+        }
+        return dist
+    }
+
    
     self.getCurrentPoint = function (curr){
         if (curr == -1){
@@ -278,10 +274,17 @@ drawMap = function(localMap, color,finish){
     for (i=2; i<localMap.length; i=i+2) {
         ctx.lineTo(localMap[i],localMap[i+1]);
     }
+
     if(finish == true){
         ctx.lineTo(localMap[0],localMap[1]);
     }
     ctx.stroke();
+
+    for (i=0; i<localMap.length; i +=2) {
+        ctx.beginPath();
+        ctx.arc(localMap[i],localMap[i+1], 4, 0, 2 * Math.PI, false);
+        ctx.fill();
+    }
     ctx.restore();
 }
  
@@ -298,7 +301,7 @@ update = function(){
     frameCount += 1
 
     //if (frameCount % 300 == 0){
-    if (frameCount === 1000){
+    if (frameCount === 300){
         r = Math.round(Math.random()*230+25)
         g = Math.round(Math.random()*230+25) 
         b = Math.round(Math.random()*230+25)
@@ -306,7 +309,7 @@ update = function(){
         //if (Math.random() > .3) {
         if (Math.random() > 0) {
         //Car(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
-        Car(frameCount/300+1,5,45,0,0,.5,0,myColor,1);
+        Car(frameCount/300+1,5,45,0,0,.2,0,myColor,1);
     }
     else { 
         //Pickup(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
@@ -352,7 +355,7 @@ document.onkeydown = function(event){
                
 }
 //Car(1,5,45,0,0,1,0,'red');
-Pickup(1,5,45,0,0,1,0,'red');
+Pickup(1,5,45,0,0,0.2,0,'red');
 var updateTime = 0.25
 setInterval(update,updateTime*40);
 </script>
