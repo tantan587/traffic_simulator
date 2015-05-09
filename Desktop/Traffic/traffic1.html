@@ -8,33 +8,52 @@ ctx.font = '15px Arial';
 var HEIGHT = 750;
 var WIDTH = 750;
 var vehicleList = {};
-var go = 1;
 var wheelLength = 6
 var wheelWidth = 3
 var timeWhenGameStarted = Date.now();
 var frameCount = 1;
 var maxTurning = 30;
-//var map = [100,225,100,350, 225,475, 350,475, 475,350, 475,225, 350,100, 225,100]
-//var map = [5,500,100,475, 350,475, 475,350, 475,225, 350,100, 225,100]
-var map =  [ 000,040, 120,60 , 145,080, 150,100, 115,195, 087,240, 070,280, 60 ,380, 60 ,390, 110,480, 100,610, 81 ,642, 80 ,670, 160,720, 265,700, 286,675, 280,635, 270,617, 204,578, 190,550, 200,400, 195,290, 245,235, 330,275, 340,370, 311,443, 300,520, 405,690, 462,690, 500,650, 530,535, 500,475, 475,400, 475,280, 500,225, 575,190, 660,200, 720,310, 720,415, 715,570, 690,595, 650,605, 593,585, 585,547, 595,425, 590,320, 565,120, 560,111, 548,105, 520,115, 390,120, 342,109, 310,80 , 313,58 , 331,41 , 360,25 , 390,40 , 999,40 ]
+var updateTime = 0.01;
+var quickFactor = 10;
+var map = [0 ,40, 120, 60, 145,080, 150,100, 115,195, 087,240, 070,280, 60 ,380, 60 ,390, 110,480, 100,610, 81 ,642, 80 ,670, 160,720, 265,700, 286,675, 280,635, 270,617, 204,578, 190,550, 200,400, 195,290, 245,235, 330,275, 340,370, 311,443, 300,520, 405,690, 462,690, 500,650, 530,535, 500,475, 475,400, 475,280, 480,115, 590, 60 , 660, 70, 720,310, 720,415, 715,570, 690,595, 650,605, 593,585, 585,547, 595,425, 574,361, 545,335, 463,328, 383,333, 247,366, 168,382, 126,387, 87 ,369, 87 ,332, 118,253, 181,169, 255,87 , 294,42 , 344, 46, 434,83, 560,90 , 999,90 ]
 
-Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,color,leader){
+
+//590,320, 565,120, 560,111, 548,105, 520,115, 390,120, 342,109, 310,80 , 313,58 , 331,41 , 360,25 , 390,40 , 999,40 ]
+
+Car = function(id,x,y,theta,spd,curr,color,leader,desiredSpeed){
+    var self = Vehicle('Car',id,x,y,theta,spd,curr,color,leader,desiredSpeed)
+    self.topSpd = 1000
+    self.maxAcceleration = 20*updateTime
+    self.length = 30
+    self.width =15
+    self.wheelD = 0.65
+    vehicleList[id] = self
+    return self
+}
+ 
+Pickup = function(id,x,y,theta,spd,curr,color,leader){
+    var self = Vehicle('Pickup',id,x,y,theta,spd,curr,color,leader)
+    vehicleList[id] = self
+    self.length = 40
+    self.width =15
+    self.wheelD = 0.7
+    self.topSpd = 200
+    return self
+}
+
+Vehicle = function(type,id,x,y,theta,spd,currPoint,color,myLeader,desiredSpeed){
     var self = {
         type:type,
         id:id,
         x:x,
         y:y,
         theta:theta,
-        angle:angle,
+        angle:0,
         spd:spd,
-        length:length,
-        width:width,
-        wheelD:wheelD,
         currPoint:currPoint,
         prevDistToLine:0,
         myTrace:[],
-        color:color,
-        leader:vehicleList[leader],
+        leader:vehicleList[myLeader],
         T2Rad:function(){
             return self.theta*180/Math.PI
         },
@@ -48,7 +67,7 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
  
     self.update = function (){
         self.driveOnLine();
-        self.chooseMySpeed();
+        self.chooseMySpeed(0.5);
         self.updatePosition();
         var trial = self.howFarInFront();
         //self.populateMyTrace();
@@ -59,11 +78,10 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
     self.driveOnLine = function () {
         if (Math.abs(self.getDistanceToLine('prev')) >1) {
             
-            c = self.getCurrentPoint(self.currPoint-1)
+            c = getCurrentPoint(self.currPoint-1)
             myDiff = angleNormalization(self.theta - self.getAngleOfLine())
             myDiffAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
             whichWay = Math.sign(angleNormalization(myDiffAngle-self.getAngleOfLine()))
-
             if (whichWay === 1 && Math.abs(myDiff-90) <= 1 || whichWay === -1 && Math.abs(myDiff+90) <= 1){
                 self.angle = 0
             }
@@ -83,7 +101,6 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         else {
         self.angle = angleNormalization(self.getAngleOfLine()-self.theta);
         }
-
         if (Math.abs(self.angle) > maxTurning)
            self.angle = Math.sign(self.angle)*maxTurning
  
@@ -95,67 +112,49 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         else {self.prevDistToLine=self.getDistanceToLine()
         }
     }
-    self.chooseMySpeed = function () {
-        if (self.currPoint == 10){
-            self.spd += 0.00
-        }
-            
-        if (self.currPoint == 19) {
-            self.spd -= 0.00
-            //self.color = 'blue'
-        }
-    }
+    self.chooseMySpeed = function (time) {
+        //if (self.spd < desiredSpeed){
+            //need to make this a function of aggression
+            //self.spd += maxAcceleration // maxAcceleration (px/s) /s 
 
+            //testAcceleration = (self.lookAhead(time)-2-Math.pow(time,2)/2*self.spd)/(2+Math.pow(time,2)/2)*updateTime
+        if (typeof self.leader != 'undefined'){
+            carDistance = (self.leader.wheelD+1)*self.leader.length/2 + (1-self.wheelD)*self.length/2 +5
+            //LA = INT (XDOT + xDOTd)*t from 0 to time + xDOTd
+            //LA = (XDOT + xDOTd)*time^2/2+xDOTd
+
+            newSpd =   (self.lookAhead(time)-carDistance-Math.pow(time,2)/2*self.spd)/(2+Math.pow(time,2)/2)
+            
+            if ((newSpd-self.spd) > self.maxAcceleration)
+                newSpd = self.maxAcceleration + self.spd
+            if ((newSpd-self.spd) < -2*self.maxAcceleration)
+                newSpd = -2*self.maxAcceleration + self.spd
+            self.spd = newSpd
+        }
+        //}
+        
+    }
     self.updatePosition = function () {
         //normal method
-        self.x += self.XDot(self.theta);
-        self.y += self.YDot(self.theta);
-        self.theta += self.ThetaDot(self.angle)
+        self.x += self.spd*updateTime*Math.cos(self.theta*Math.PI/180);
+        self.y += self.spd*updateTime*Math.sin(self.theta*Math.PI/180);
+        self.theta += 180*self.spd*updateTime/(self.length*self.wheelD)*Math.tan(self.angle*Math.PI/180)/Math.PI
         self.theta = angleNormalization(self.theta)
-        self.angle = angleNormalization(self.angle) 
-    }
- 
-    self.updatePositionRK = function () {
-        updateTime = 0.25
-        k1[0] = self.XDot(self.theta)
-        k1[1] = self.YDot(self.theta);
-        k1[2] = self.ThetaDot(self.angle)
-        k2[0] = self.XDot(self.theta+updateTime/2*k1[2])
-        k2[1] = self.YDot(self.theta+updateTime/2*k1[2])
-        k3[0] = self.XDot(self.theta+updateTime/2*k1[2])
-        k3[1] = self.YDot(self.theta+updateTime/2*k1[2])
-        k4[0] = self.XDot(self.theta+updateTime*k1[2])
-        k4[1] = self.YDot(self.theta+updateTime*k1[2])
-        self.x += updateTime/6*(k1[0]+2*k2[0]+2*k3[0]+k4[0]);
-        self.y += updateTime/6*(k1[1]+2*k2[1]+2*k3[1]+k4[1]);
-        self.theta += updateTime*self.ThetaDot(self.angle)
-        self.theta = self.theta % 360
-    }
- 
-    self.XDot = function(myTheta) {
-        return self.spd*Math.cos(myTheta*Math.PI/180)
-    }
-    self.YDot = function(myTheta) {
-        return self.spd*Math.sin(myTheta*Math.PI/180)
-    }
-    self.ThetaDot = function(myTheta) {
-        return (180*self.spd/(self.length*self.wheelD)*Math.tan(myTheta*Math.PI/180)/Math.PI)
+        self.leader = vehicleList[myLeader]
     }
 
     self.draw = function () {
         ctx.save();
         ctx.translate(self.x,self.y)
         ctx.rotate(self.theta*Math.PI/180);
-        ctx.fillStyle = self.color
+        ctx.fillStyle = color
         ctx.fillRect(-(1-self.wheelD)/2*self.length,-self.width/2,self.length,self.width)
         ctx.fillStyle = 'black';
         ctx.beginPath();
         ctx.arc(0, 0, 2, 0, 2 * Math.PI, false);
         ctx.fill();
-       
         ctx.fillRect(-wheelLength/2,-self.width/2+wheelWidth/2,wheelLength,wheelWidth)
         ctx.fillRect(-wheelLength/2,self.width/2-3*wheelWidth/2,wheelLength,wheelWidth)
-       
         ctx.translate(self.wheelD*self.length,0)
         ctx.beginPath();
         ctx.arc(0, 0, 1, 0, 2 * Math.PI, false);
@@ -163,9 +162,9 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         ctx.save();
         if (self.theta > 90 && self.theta < 270)
             {ctx.rotate(Math.PI)
-            ctx.fillText(self.howFarInFront(),-7,-12)}
-         else   {ctx.fillText(self.howFarInFront(),-22,-12)}
-            //else   {ctx.fillText(Math.round(self.spd*100)/100,-22,-12)}
+            ctx.fillText(myRound(self.spd,2),-7,-12)}
+         else   {ctx.fillText(myRound(self.spd,2),-22,-12)}
+            //else   {ctx.fillText(self.howFarInFront(),-22,-12)}
         ctx.restore();
         ctx.save();
         ctx.translate(0,-self.width/2+wheelWidth)
@@ -177,27 +176,21 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         ctx.fillRect(-wheelLength/2,-wheelWidth/2,wheelLength,wheelWidth)
         ctx.restore();      
     }
-
-        self.howFarInFront = function(object) {
-        if (typeof leader === 'undefined'){
-            return 10000
-        }
-        else {
-            return = -Math.round((self.leader.distToCurr() + self.distToCurr() + self.DistanceBetweenTwoCurrPoints(self.currPoint,self.leader.currPoint))*100)/100
-        }
+        //i might want to be able to pass in an inanimate object here. 
+    self.howFarInFront = function(object) {
+        if (typeof self.leader === 'undefined')
+            return myRound(self.distToCurr()+ self.DistanceBetweenTwoCurrPoints(self.currPoint,map.length/2),2)
+        else 
+            return myRound(-self.leader.distToCurr() + self.distToCurr() + self.DistanceBetweenTwoCurrPoints(self.currPoint,self.leader.currPoint),2)
     }
-
     self.distToCurr = function() {
-
-        c = self.getCurrentPoint(self.currPoint-1)
+        c = getCurrentPoint(self.currPoint-1)
         myAngle = Math.atan2(c[3]-self.yFront(),c[2]-self.xFront())*180/Math.PI
         myDiffAngle = Math.abs(angleNormalization(myAngle-self.getAngleOfLine()))
         thirdAngle = 90-myDiffAngle
         distOnLineToCurr = Math.sin(thirdAngle/180*Math.PI)*self.getDistanceToLine('prev')/Math.sin(myDiffAngle/180*Math.PI)
-
         return distOnLineToCurr
     }
-
     //smaller one should be first
     self.DistanceBetweenTwoCurrPoints = function(one,two) {
         if (two < one) {
@@ -205,40 +198,36 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
         }
         var dist = 0
         for (i=one;i<two;i++){
-            c = self.getCurrentPoint(i)
+            c = getCurrentPoint(i)
             dist += Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
         }
         return dist
     }
 
-   
-    self.getCurrentPoint = function (curr){
-        if (curr == -1){
-        //return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
-        return [map[0],map[1],map[2],map[3]]
-       }
-        else if (curr == map.length/2-1){
-        return [map[curr*2],map[curr*2+1],map[0],map[1]]  
-        }
-        else {
-        return [map[curr*2],map[curr*2+1],map[curr*2+2],map[curr*2+3]]  
-        }
+    //i might want to be able to pass in an inanimate object here.
+    self.lookAhead = function(seconds,object){
+        
+        if (typeof self.leader === 'undefined')
+            leaderChange = 0
+        else 
+            leaderChange = self.leader.spd*seconds
+        return self.howFarInFront() +leaderChange
     }
+   
     self.getDistanceToLine = function(whichOne){
          x = self.xFront();
          y = self.yFront();
         if (whichOne === "prev") {
-        c = self.getCurrentPoint(self.currPoint-1)}
+        c = getCurrentPoint(self.currPoint-1)}
         else {
-        c = self.getCurrentPoint(self.currPoint)    
+        c = getCurrentPoint(self.currPoint)    
         }
         return Math.abs((c[3]-c[1])*x-(c[2]-c[0])*y + c[2]*c[1]-c[3]*c[0])/Math.sqrt(Math.pow(c[3]-c[1],2)+Math.pow(c[2]-c[0],2))
     }
     self.getAngleOfLine = function(){
-        c = self.getCurrentPoint(self.currPoint-1)
+        c = getCurrentPoint(self.currPoint-1)
         return Math.atan2(c[3]-c[1],c[2]-c[0])*180/Math.PI
     }
-
     
     self.populateMyTrace = function(){
         myLength = self.myTrace.length
@@ -253,20 +242,65 @@ Vehicle = function(type,id,x,y,theta,angle,spd,length,width,wheelD, currPoint,co
     }
     return self
 }
+getCurrentPoint = function (curr){
+    if (curr == -1){
+    //return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
+    return [map[0],map[1],map[2],map[3]]
+   }
+    else if (curr == map.length/2-1){
+    return [map[curr*2],map[curr*2+1],map[0],map[1]]  
+    }
+    else {
+    return [map[curr*2],map[curr*2+1],map[curr*2+2],map[curr*2+3]]  
+    }
+}
 
-Car = function(id,x,y,theta,angle,spd,curr,color,leader){
-    var self = Vehicle('Car',id,x,y,theta,angle,spd,30,15,0.65,curr,color,leader)
-    self.topSpd = 2.3
-    vehicleList[id] = self
-    return self
+checkCross = function(localMap) {
+    var counter = 0
+    var crosses= []
+    for (i=0; i<(localMap.length)/2-2; i+=1){
+        for (j=i+2; j<(localMap.length)/2-1; j+=1){
+
+            a = getCurrentPoint(i)
+            b = getCurrentPoint(j)
+            m1 = (a[1]-a[3])/(a[0]-a[2])
+            m2 = (b[1]-b[3])/(b[0]-b[2])
+            console.log(i,m1,j,m2)
+            if (m1 != m2) {
+                if (1/m1 === 0){
+                    x =a[0]
+                    c2 = b[1] -m2*b[0]
+                    y = m2*x+c2
+                }
+                else if (1/m2 === 0){
+                    x = b[0]
+                    c1 = a[1] -m1*a[0]
+                    y = m1*x+c1
+                }
+                else {
+                c1 = a[1] -m1*a[0]
+                c2 = b[1] -m2*b[0]
+                x = (c2-c1)/(m1-m2)
+                y = m1*x+c1
+                }   
+                if (x <= Math.max(a[0],a[2]) && x >= Math.min(a[0],a[2]) && x <= Math.max(b[0],b[2]) && x >= Math.min(b[0],b[2]) && y <= Math.max(a[1],a[3]) && y >= Math.min(a[1],a[3]) && y <= Math.max(b[1],b[3]) && y >= Math.min(b[1],b[3])) {
+                    ctx.beginPath();
+                    ctx.arc(x,y, 4, 0, 2 * Math.PI, false);
+                    ctx.fill();
+                    crosses[counter] =x
+                    crosses[counter+1] =y
+                    crosses[counter+2] = (Math.atan(m1)+Math.atan(m2))/2
+                    crosses[counter+3] = i
+                    crosses[counter+4] = j
+                    counter += 5
+                }
+            }
+        }
+    }
+    return crosses          
 }
- 
-Pickup = function(id,x,y,theta,angle,spd,curr,color,leader){
-    var self = Vehicle('Pickup',id,x,y,theta,angle,spd,40,15,0.7,curr,color,leader)
-    vehicleList[id] = self
-    return self
-}
-drawMap = function(localMap, color,finish){
+
+drawMap = function(localMap, color,cross,finish){
     ctx.save();
     ctx.strokeStyle = color
     ctx.beginPath();
@@ -274,16 +308,44 @@ drawMap = function(localMap, color,finish){
     for (i=2; i<localMap.length; i=i+2) {
         ctx.lineTo(localMap[i],localMap[i+1]);
     }
-
     if(finish == true){
         ctx.lineTo(localMap[0],localMap[1]);
     }
     ctx.stroke();
-
     for (i=0; i<localMap.length; i +=2) {
         ctx.beginPath();
         ctx.arc(localMap[i],localMap[i+1], 4, 0, 2 * Math.PI, false);
         ctx.fill();
+    }
+
+    for (i =0; i<cross.length; i+=5){
+        r = 10
+        Light = function(color,angle) {
+            ctx.fillStyle = color
+            ctx.save();
+            ctx.translate(cross[i],cross[i+1])
+            ctx.rotate(cross[i+2]+angle);
+            ctx.beginPath();
+            ctx.moveTo(r,0);
+            ctx.lineTo(0,r);
+            ctx.lineTo(0,-r);
+            ctx.lineTo(-r,0);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0,0, r,0, Math.PI/2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0,0, r,Math.PI, 3*Math.PI/2);
+            ctx.fill();
+            
+            ctx.restore();
+
+        };
+        Light("red",0)
+        Light("green",Math.PI/2);
+        ctx.beginPath();
+        ctx.arc(cross[i],cross[i+1], r, 0, 2 * Math.PI, false);
+        ctx.stroke();
     }
     ctx.restore();
 }
@@ -295,24 +357,30 @@ angleNormalization = function(myAngle) {
         myAngle += 360;       
     return myAngle
 }
+
+myRound = function(num,digits) {
+
+    return Math.round(num*Math.pow(10,digits))/Math.pow(10,digits)
+}
+
 update = function(){
     ctx.clearRect(0,0,WIDTH,HEIGHT);
-    drawMap(map,'black');
+    drawMap(map,'black',theCrosses);
     frameCount += 1
-
     //if (frameCount % 300 == 0){
-    if (frameCount === 300){
+    if (frameCount % (3/updateTime) == 0){
         r = Math.round(Math.random()*230+25)
         g = Math.round(Math.random()*230+25) 
         b = Math.round(Math.random()*230+25)
         myColor = "#"+(r).toString(16)+(g).toString(16)+(b).toString(16);
-        //if (Math.random() > .3) {
         if (Math.random() > 0) {
+        //if (Math.random() > 0) {
         //Car(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
-        Car(frameCount/300+1,5,45,0,0,.2,0,myColor,1);
+        //Car(frameCount*updateTime/3+1,5,45,0,0,0,myColor,frameCount*updateTime/3,100);
     }
     else { 
-        //Pickup(frameCount/300+1,5,45,0,0,.5,0,myColor,frameCount/300);
+        //Pickup(frameCount*updateTime/3+1,5,45,0,0,0,myColor,frameCount*updateTime/3,100);
+    
     }
 }
     for (id in vehicleList) {
@@ -331,33 +399,36 @@ document.onclick = function(mouse) {
 }
  
 document.onkeydown = function(event){
-        if(event.keyCode === 83)
-            for (id in vehicleList) {        //s
-                vehicleList[id].spd -= updateTime;
+        if(event.keyCode === 83) //s
+            for (id in vehicleList) {   
+                if (typeof vehicleList[id].leader === 'undefined')     
+                    vehicleList[id].spd -= 5;
             }
         if(event.keyCode === 87)        //w
-                for (id in vehicleList) {        //s
-                vehicleList[id].spd += updateTime;
+            for (id in vehicleList) {   
+                if (typeof vehicleList[id].leader === 'undefined')     
+                    vehicleList[id].spd += 5;
             }
-        if(event.keyCode === 68)  {
-            for (id in vehicleList) {        //d
-                vehicleList[id].theta += 5;
-            } 
-        }    
+        if(event.keyCode === 68) {
         
-        if(event.keyCode === 65)  {
-            for (id in vehicleList) {        //a
-                vehicleList[id].theta -= 5;
-            }     
-        }      
+            for (id in vehicleList) {   
+                if (typeof vehicleList[id].leader === 'undefined')     
+                    delete vehicleList[id]
+            }
+            
+        }//d   
+        
+        if(event.keyCode === 65) {}//a      
                
         if(event.keyCode === 90) {} //z
                
 }
-//Car(1,5,45,0,0,1,0,'red');
-Pickup(1,5,45,0,0,0.2,0,'red');
-var updateTime = 0.25
-setInterval(update,updateTime*40);
+//Car(1,5,45,0,0,20,0,'red');
+Pickup(1,5,45,0,20,0,'red');
+var theCrosses = checkCross(map)
+drawMap(map,'black',theCrosses);
+
+//setInterval(update,updateTime*1000);
 </script>
 </body>
 </html>
