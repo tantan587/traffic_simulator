@@ -8,6 +8,7 @@ ctx.font = '15px Arial';
 var HEIGHT = 750;
 var WIDTH = 750;
 var vehicleList = {};
+var trafficLightList = {};
 var wheelLength = 6
 var wheelWidth = 3
 var timeWhenGameStarted = Date.now();
@@ -242,6 +243,74 @@ Vehicle = function(type,id,x,y,theta,spd,currPoint,color,myLeader,desiredSpeed){
     }
     return self
 }
+
+TrafficLight = function(id,x,y,drawSlope,currPoint1,currPoint2){
+
+    var self = {
+        id:id,
+        x:x,
+        y:y,
+        drawSlope:drawSlope,
+        }
+        self.draw = function(){
+        r = 10
+        oneSide = function(color,angle) {
+            ctx.save();
+            ctx.fillStyle = color
+            ctx.translate(self.x,self.y)
+            ctx.rotate(self.drawSlope+angle);
+            ctx.beginPath();
+            ctx.moveTo(r,0);
+            ctx.lineTo(0,r);
+            ctx.lineTo(0,-r);
+            ctx.lineTo(-r,0);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0,0, r,0, Math.PI/2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(0,0, r,Math.PI, 3*Math.PI/2);
+            ctx.fill();
+            ctx.restore();
+        };
+        oneSide(self.currPoint(1,"color"),0)
+        oneSide(self.currPoint(2,"color"),Math.PI/2);
+        ctx.beginPath();
+        ctx.arc(cross[i],cross[i+1], r, 0, 2 * Math.PI, false);
+        ctx.stroke();
+        }
+
+        self.currPoint = function(which,type){
+            color = function(which){
+                timeSwitch = 1/updateTime*10
+                if (which==1){
+                    if (frameCount %timeSwitch <= 400)
+                        return "green"
+                    else if (frameCount %timeSwitch >= 500)
+                    return "red"
+                    else
+                    return "yellow"
+                }
+                if (which==2){
+                    if (frameCount %timeSwitch <= 500)
+                        return "red"
+                    else if (frameCount %timeSwitch > 900)
+                    return "yellow"
+                    else
+                    return "green"
+                }
+            }(which)
+            if (type == "color")
+                return color
+            else if (which ==2)
+                return currPoint2
+            else
+                return currPoint1
+        }
+
+    return self
+}
+
 getCurrentPoint = function (curr){
     if (curr == -1){
     //return [map[map.length-2],map[map.length-1],map[curr*2+2],map[curr*2+3]]
@@ -265,7 +334,6 @@ checkCross = function(localMap) {
             b = getCurrentPoint(j)
             m1 = (a[1]-a[3])/(a[0]-a[2])
             m2 = (b[1]-b[3])/(b[0]-b[2])
-            console.log(i,m1,j,m2)
             if (m1 != m2) {
                 if (1/m1 === 0){
                     x =a[0]
@@ -287,9 +355,12 @@ checkCross = function(localMap) {
                     ctx.beginPath();
                     ctx.arc(x,y, 4, 0, 2 * Math.PI, false);
                     ctx.fill();
+                    drawSlope = (Math.atan(m1)+Math.atan(m2))/2
+                    if (angleNormalization(Math.atan(m2)-Math.atan(m1)) > 0)
+                        drawSlope += Math.PI/2
                     crosses[counter] =x
                     crosses[counter+1] =y
-                    crosses[counter+2] = (Math.atan(m1)+Math.atan(m2))/2
+                    crosses[counter+2] = drawSlope
                     crosses[counter+3] = i
                     crosses[counter+4] = j
                     counter += 5
@@ -317,37 +388,9 @@ drawMap = function(localMap, color,cross,finish){
         ctx.arc(localMap[i],localMap[i+1], 4, 0, 2 * Math.PI, false);
         ctx.fill();
     }
-
-    for (i =0; i<cross.length; i+=5){
-        r = 10
-        Light = function(color,angle) {
-            ctx.fillStyle = color
-            ctx.save();
-            ctx.translate(cross[i],cross[i+1])
-            ctx.rotate(cross[i+2]+angle);
-            ctx.beginPath();
-            ctx.moveTo(r,0);
-            ctx.lineTo(0,r);
-            ctx.lineTo(0,-r);
-            ctx.lineTo(-r,0);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(0,0, r,0, Math.PI/2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(0,0, r,Math.PI, 3*Math.PI/2);
-            ctx.fill();
-            
-            ctx.restore();
-
-        };
-        Light("red",0)
-        Light("green",Math.PI/2);
-        ctx.beginPath();
-        ctx.arc(cross[i],cross[i+1], r, 0, 2 * Math.PI, false);
-        ctx.stroke();
+    for (id in trafficLightList){
+        trafficLightList[id].draw();
     }
-    ctx.restore();
 }
  
 angleNormalization = function(myAngle) {
@@ -365,7 +408,7 @@ myRound = function(num,digits) {
 
 update = function(){
     ctx.clearRect(0,0,WIDTH,HEIGHT);
-    drawMap(map,'black',theCrosses);
+    drawMap(map,'black');
     frameCount += 1
     //if (frameCount % 300 == 0){
     if (frameCount % (3/updateTime) == 0){
@@ -424,11 +467,14 @@ document.onkeydown = function(event){
                
 }
 //Car(1,5,45,0,0,20,0,'red');
-Pickup(1,5,45,0,20,0,'red');
-var theCrosses = checkCross(map)
-drawMap(map,'black',theCrosses);
+//Pickup(1,5,45,0,20,0,'red');
+var cross = checkCross(map)
+for (i =0; i<cross.length; i+=5){
+    trafficLightList[i/5] = TrafficLight(i/5,cross[i],cross[i+1],cross[i+2],cross[i+3],cross[i+4]) 
+}
+drawMap(map,'black');
 
-//setInterval(update,updateTime*1000);
+setInterval(update,updateTime*1000);
 </script>
 </body>
 </html>
